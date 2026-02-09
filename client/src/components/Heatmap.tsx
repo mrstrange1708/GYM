@@ -5,8 +5,8 @@ interface HeatmapProps {
 }
 
 export default function Heatmap({ data }: HeatmapProps) {
-    // Generate last 84 days (12 weeks)
-    const days = [];
+    // Generate last 84 days (12 weeks), excluding Sundays (rest day)
+    const allDays = [];
     const today = new Date();
 
     for (let i = 83; i >= 0; i--) {
@@ -14,7 +14,7 @@ export default function Heatmap({ data }: HeatmapProps) {
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
         const workout = data.find(d => d.date === dateStr);
-        days.push({
+        allDays.push({
             date: dateStr,
             duration: workout?.duration || 0,
             dayOfWeek: date.getDay(),
@@ -22,12 +22,16 @@ export default function Heatmap({ data }: HeatmapProps) {
         });
     }
 
-    // Group by weeks
+    // Filter out Sundays (dayOfWeek === 0) since there are no exercises on rest day
+    const days = allDays.filter(day => day.dayOfWeek !== 0);
+
+    // Group by weeks (now Mon-Sat only, so 6 days per week)
     const weeks: typeof days[] = [];
     let currentWeek: typeof days = [];
 
     days.forEach((day, index) => {
         currentWeek.push(day);
+        // Saturday is day 6, end of week (since we removed Sunday)
         if (day.dayOfWeek === 6 || index === days.length - 1) {
             weeks.push(currentWeek);
             currentWeek = [];
@@ -42,18 +46,19 @@ export default function Heatmap({ data }: HeatmapProps) {
         return 'bg-green-400';
     };
 
-    const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    // Day labels: Mon-Sat only (no Sunday - rest day)
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S'];
 
     return (
         <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
             <h3 className="text-lg font-bold text-white mb-4">Activity Heatmap</h3>
 
             <div className="flex gap-1">
-                {/* Day labels */}
+                {/* Day labels - Mon to Sat */}
                 <div className="flex flex-col gap-1 mr-2">
                     {dayLabels.map((label, i) => (
                         <div key={i} className="w-4 h-4 flex items-center justify-center text-[10px] text-white/40">
-                            {i % 2 === 1 ? label : ''}
+                            {label}
                         </div>
                     ))}
                 </div>
@@ -62,9 +67,9 @@ export default function Heatmap({ data }: HeatmapProps) {
                 <div className="flex gap-1 overflow-x-auto">
                     {weeks.map((week, weekIndex) => (
                         <div key={weekIndex} className="flex flex-col gap-1">
-                            {/* Pad first week if needed */}
-                            {weekIndex === 0 && week[0]?.dayOfWeek > 0 && (
-                                Array(week[0].dayOfWeek).fill(null).map((_, i) => (
+                            {/* Pad first week if needed - adjust for Mon-Sat (dayOfWeek 1-6, map to 0-5) */}
+                            {weekIndex === 0 && week[0]?.dayOfWeek > 1 && (
+                                Array(week[0].dayOfWeek - 1).fill(null).map((_, i) => (
                                     <div key={`pad-${i}`} className="w-4 h-4" />
                                 ))
                             )}
